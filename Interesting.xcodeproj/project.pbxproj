@@ -9,6 +9,7 @@
 /* Begin PBXBuildFile section */
 		8851764C1734B66A00D4FE0A /* INPipeline.m in Sources */ = {isa = PBXBuildFile; fileRef = 8851764B1734B66A00D4FE0A /* INPipeline.m */; };
 		8851764F1734B84800D4FE0A /* INSingletonFactory.m in Sources */ = {isa = PBXBuildFile; fileRef = 8851764E1734B84800D4FE0A /* INSingletonFactory.m */; };
+		88517651173563BA00D4FE0A /* README.md in Resources */ = {isa = PBXBuildFile; fileRef = 88517650173563BA00D4FE0A /* README.md */; };
 		885CCD1017266616008091F0 /* INThumbnailCache.m in Sources */ = {isa = PBXBuildFile; fileRef = 885CCD0F17266616008091F0 /* INThumbnailCache.m */; };
 		88ABCB54172990B5004772CF /* INDispatch.m in Sources */ = {isa = PBXBuildFile; fileRef = 88ABCB53172990B5004772CF /* INDispatch.m */; };
 		88ABCB58172A1769004772CF /* AVFoundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 88ABCB57172A1769004772CF /* AVFoundation.framework */; };
@@ -85,6 +86,7 @@
 		8851764B1734B66A00D4FE0A /* INPipeline.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = INPipeline.m; sourceTree = "<group>"; };
 		8851764D1734B84800D4FE0A /* INSingletonFactory.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = INSingletonFactory.h; sourceTree = "<group>"; };
 		8851764E1734B84800D4FE0A /* INSingletonFactory.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = INSingletonFactory.m; sourceTree = "<group>"; };
+		88517650173563BA00D4FE0A /* README.md */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text; path = README.md; sourceTree = SOURCE_ROOT; };
 		885CCD0E17266616008091F0 /* INThumbnailCache.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = INThumbnailCache.h; sourceTree = "<group>"; };
 		885CCD0F17266616008091F0 /* INThumbnailCache.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = INThumbnailCache.m; sourceTree = "<group>"; };
 		88ABCB52172990B5004772CF /* INDispatch.h */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.h; path = INDispatch.h; sourceTree = "<group>"; };
@@ -293,6 +295,7 @@
 		88C422931724B0C500EFFEB6 /* Supporting Files */ = {
 			isa = PBXGroup;
 			children = (
+				88517650173563BA00D4FE0A /* README.md */,
 				88C422941724B0C500EFFEB6 /* Interesting-Info.plist */,
 				88C422951724B0C500EFFEB6 /* InfoPlist.strings */,
 				88C422981724B0C500EFFEB6 /* main.m */,
@@ -460,6 +463,7 @@
 				88D239DD173220BE00FE7060 /* navigation_bar_bg@2x.png in Resources */,
 				88D239E01732278900FE7060 /* stack_frame_sm.png in Resources */,
 				88D239E11732278900FE7060 /* stack_frame_sm@2x.png in Resources */,
+				88517651173563BA00D4FE0A /* README.md in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

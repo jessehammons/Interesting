@@ -8,17 +8,65 @@
 
 #import "INAppDelegate.h"
 
+#import "INObject.h"
 #import "INViewController.h"
+#import "INHorizontalViewController.h"
+#import "INTagsCollectionViewController.h"
+#import "INFullscreenLoadingViewController.h"
+#import "INTestTableViewController.h"
+#import "INTestDispatchViewController.h"
 
 @implementation INAppDelegate
 
 - (BOOL)application:(UIApplication *)application didFinishLaunchingWithOptions:(NSDictionary *)launchOptions
 {
+    NSLog(@"initialized tag history %@", [INTagHistory shared]);
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
-    // Override point for customization after application launch.
     self.viewController = [[INViewController alloc] initWithNibName:@"INViewController" bundle:nil];
-    self.window.rootViewController = self.viewController;
-    [self.window makeKeyAndVisible];
+//    INTagsCollectionViewController *controller = [[INTagsCollectionViewController alloc] initWithNibName:@"INTagsCollectionViewController" bundle:nil];
+//    INTestTableViewController *controller = [[INTestTableViewController alloc] initWithStyle:UITableViewStylePlain];
+    INTestDispatchViewController *controller = [[INTestDispatchViewController alloc] initWithStyle:UITableViewStylePlain];
+    
+    
+//    self.navigationController = [[UINavigationController alloc] initWithRootViewController:self.viewController];
+    self.navigationController = [[UINavigationController alloc] initWithRootViewController:controller];
+    self.navigationController.navigationBar.translucent = YES;
+    self.navigationController.navigationBar.barStyle = UIBarStyleBlack;
+    self.navigationController.toolbar.barStyle = UIBarStyleBlack;
+    self.navigationController.toolbar.translucent = YES;
+    self.navigationController.view.backgroundColor = [[UIColor blackColor] colorWithAlphaComponent:0.7];
+//    [self.navigationController setToolbarHidden:NO];
+    [self.navigationController setNavigationBarHidden:NO animated:YES];
+    self.window.rootViewController = self.navigationController;
+    self.window.backgroundColor = [UIColor scrollViewTexturedBackgroundColor];
+    [self.window makeKeyAndVisible]; 
+//    [self.navigationController setNavigationBarHidden:YES animated:NO];
+
+    // NavigationBar appearance
+//    [[UINavigationBar appearance] setTintColor: [UIColor colorWithHexString:@"0xEBEBEB"]];
+    // Nav title appearance
+    [[UINavigationBar appearance] setBackgroundImage:[UIImage imageNamed:@"navigation_bar_bg"] forBarMetrics:UIBarMetricsDefault];
+    NSDictionary *navbarTitleTextAttributes = [NSDictionary dictionaryWithObjectsAndKeys:
+                                               [UIFont fontWithName:@"Didot-Italic" size:24.0], UITextAttributeFont,
+                                               [UIColor colorWithRed:0.95 green:0.22 blue:0.60 alpha:0.8],UITextAttributeTextColor,
+                                               [UIColor clearColor], UITextAttributeTextShadowColor,
+                                               [NSValue valueWithUIOffset:UIOffsetMake(0, 4)], UITextAttributeTextShadowOffset, nil];
+    
+//    95 22 60
+    [[UINavigationBar appearance] setTitleTextAttributes:navbarTitleTextAttributes];
+    
+    [[UINavigationBar appearance] setTitleVerticalPositionAdjustment:-5 forBarMetrics:UIBarMetricsDefault];
+
+    self.viewController.navigationItem.title = @"interesting";
+
+//    dispatch_async(dispatch_get_main_queue(), ^{
+//        [[INFullscreenLoadingViewController shared] presentLoadingFullscreen:controller completion:^{
+//            [controller loadTag:@"interesting" completion:^{
+//                [[INFullscreenLoadingViewController shared] dismissLoadingFullscreen:NULL];
+//            }];
+//        }];
+//    });
+
     return YES;
 }
 

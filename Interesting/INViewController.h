@@ -8,6 +8,9 @@
 
 #import <UIKit/UIKit.h>
 
-@interface INViewController : UIViewController
+@interface INViewController : UIViewController <UICollectionViewDataSource>
+
+@property (nonatomic, strong) UICollectionView *collectionView;
+@property (nonatomic, strong) NSArray *photos;
 
 @end

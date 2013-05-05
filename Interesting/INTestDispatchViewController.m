@@ -107,7 +107,7 @@
 ////        if (i == INPipelinePriorityHigh) {
 ////            useCache = NO;
 ////        }
-        imageView.pipelineObject = [INPipeline promoteDispatchForDataURL:URL priority:priority download:YES useCache:useCache imageView:imageView];
+        imageView.pipelineObject = [INPipeline promoteDispatchForDataURL:URL priority:priority download:YES useCache:useCache imageView:imageView decodeBlock:NULL];
         count++;
     }
 }

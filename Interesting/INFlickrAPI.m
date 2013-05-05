@@ -8,10 +8,11 @@
 
 #import "INFlickrAPI.h"
 
-#import "INDispatch.h"
+//#import "INDispatch.h"
 #import "INDiskCache.h"
+#import "INPipeline.h"
 
-#import "AFNetworking.h"
+//#import "AFNetworking.h"
 
 @implementation INFlickrAPI
 
@@ -69,33 +70,45 @@
     NSString *p1 = [NSString stringWithFormat:@"%@%@/?api_key=%@&method=%@", HOST, API, self.API_KEY, method];
     NSString *url = [[self class] addQueryStringToUrlString:p1 withDictionary:parameters];
 
-    NSData *data = [[INDiskCache shared] dataForKey:url];
-    if (data != nil) {
-        [[INBlockDispatch shared] dispatchBackground:^{
-            id JSON = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
-            completion(JSON, nil);
-        }];
-    }
-    else {
-        NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
-        AFJSONRequestOperation *operation = [AFJSONRequestOperation JSONRequestOperationWithRequest:request
-        success:^(NSURLRequest *request, NSHTTPURLResponse *response, id JSON)
-        {
-            ZG_ASSERT_IS_BACKGROUND_THREAD();
-            completion(JSON, nil);
-            [[INDiskCache shared] setData:[NSJSONSerialization dataWithJSONObject:JSON options:0 error:nil] forKey:url];
-            //NSLog(@"success %@", JSON);
+    NSURL *URL = [NSURL URLWithString:url];
+    [INPipeline promoteDispatchForDataURL:URL priority:INPipelinePriorityDefault download:YES useCache:YES imageView:nil decodeBlock:^(INPipelineObject *pipelineObject) {
+        id JSON = nil;
+        if (pipelineObject.data.length > 0) {
+            NSError *jsonError = nil;
+            JSON = [NSJSONSerialization JSONObjectWithData:pipelineObject.data options:0 error:&jsonError];
+            if (jsonError != nil) {
+                pipelineObject.httpError = jsonError;
+            }
         }
-        failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON)
-        {
-            ZG_ASSERT_IS_BACKGROUND_THREAD();
-            completion(nil, error);
-            //NSLog(@"FAIL %@, %@", error, JSON);
-        }];
-        operation.successCallbackQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
-        operation.failureCallbackQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
-        [operation start];
-    }
+        completion(JSON, pipelineObject.httpError);
+    }];
+//    NSData *data = [[INDiskCache shared] dataForKey:url];
+//    if (data != nil) {
+//        [[INBlockDispatch shared] dispatchBackground:^{
+//            id JSON = [NSJSONSerialization JSONObjectWithData:data options:0 error:nil];
+//            completion(JSON, nil);
+//        }];
+//    }
+//    else {
+//        NSURLRequest *request = [NSURLRequest requestWithURL:[NSURL URLWithString:url]];
+//        AFJSONRequestOperation *operation = [AFJSONRequestOperation JSONRequestOperationWithRequest:request
+//        success:^(NSURLRequest *request, NSHTTPURLResponse *response, id JSON)
+//        {
+//            ZG_ASSERT_IS_BACKGROUND_THREAD();
+//            completion(JSON, nil);
+//            [[INDiskCache shared] setData:[NSJSONSerialization dataWithJSONObject:JSON options:0 error:nil] forKey:url];
+//            //NSLog(@"success %@", JSON);
+//        }
+//        failure:^(NSURLRequest *request, NSHTTPURLResponse *response, NSError *error, id JSON)
+//        {
+//            ZG_ASSERT_IS_BACKGROUND_THREAD();
+//            completion(nil, error);
+//            //NSLog(@"FAIL %@, %@", error, JSON);
+//        }];
+//        operation.successCallbackQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+//        operation.failureCallbackQueue = dispatch_get_global_queue(DISPATCH_QUEUE_PRIORITY_BACKGROUND, 0);
+//        [operation start];
+//    }
 }
 
 - (void)interestingPhotosForTags:(NSArray*)tags section:(NSInteger)section filterPredicate:(NSPredicate *)filterPredicate completion:(void (^)(NSArray *photos, NSError *error))completion

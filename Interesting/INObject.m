@@ -117,13 +117,13 @@
 
 - (void)pushStack
 {
-    ZG_ASSERT_IS_MAIN_THREAD();
+//    ZG_ASSERT_IS_MAIN_THREAD();
     [self.sourcesStack addObject:[NSMutableArray array]];
 }
 
 - (void)popStack
 {
-    ZG_ASSERT_IS_MAIN_THREAD();
+//    ZG_ASSERT_IS_MAIN_THREAD();
     NSArray *sources = [self.sourcesStack lastObject];
     for(INDataSource *dataSource in sources) {
         for(NSString *tag in dataSource.sourceTags) {
@@ -135,15 +135,33 @@
 
 - (void)addDataSource:(INDataSource*)dataSource
 {
-    ZG_ASSERT_IS_MAIN_THREAD();
+//    ZG_ASSERT_IS_MAIN_THREAD();
     for(NSString *tag in dataSource.sourceTags) {
         [self.viewedTags setObject:dataSource forKey:tag];
     };
+    for(INPhotoObject *photoObject in dataSource.photos) {
+        NSString *photoID = [photoObject.dictionary objectForKey:@"id"];
+        if (photoID.length > 0) {
+            [self.viewedPhotos setObject:dataSource forKey:photoID];
+        }
+    }
 }
 
 - (BOOL)hasViewedTag:(NSString*)tag
 {
     return [self.viewedTags objectForKey:tag] != nil;
+}
+
+- (BOOL)hasViewedPhoto:(INPhotoObject*)photoObject
+{
+    BOOL result = YES;
+    NSString *photoID = [photoObject.dictionary objectForKey:@"id"];
+    if (photoID.length > 0) {
+        if ([self.viewedPhotos objectForKey:photoID] == nil) {
+            result = NO;
+        }
+    }
+    return result;
 }
 
 @end
@@ -159,6 +177,9 @@
             URL = (NSURL*)url;
         }
         else {
+            if ([@"url_o" isEqualToString:(NSString*)key]) {
+                url = [NSString stringWithFormat:@"http://www.zaggle.org/pdx/image/resize?width=2048&quality=50&image_url=%@", [url stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
+            }
             URL = [NSURL URLWithString:url];
         }
     }
@@ -255,13 +276,18 @@
             NSString *photoID = [photo objectForKey:@"id"];
             if (photoID.length > 0) {
                 INPhotoObject *photoObject = [[INPhotoObject alloc] initWithDictionary:photo];
-                [photosArray addObject:photoObject];
-            }
-            NSArray *tags = [[photo objectForKey:@"tags"] componentsSeparatedByString:@" "];
-            for(NSString *tag in tags) {
-                if ([[INTagHistory shared] hasViewedTag:tag] == NO) {
-                    INFlickrDataSource *src = [[INFlickrDataSource alloc] initWithSourceTags:@[tag]];
-                    [tagsArray addObject:src];
+                if ([[INTagHistory shared] hasViewedPhoto:photoObject] == NO) {
+                    [photosArray addObject:photoObject];
+                    NSArray *tags = [[photoObject.dictionary objectForKey:@"tags"] componentsSeparatedByString:@" "];
+                    for(NSString *tag in tags) {
+                        if ([[INTagHistory shared] hasViewedTag:tag] == NO) {
+                            INFlickrDataSource *src = [[INFlickrDataSource alloc] initWithSourceTags:@[tag]];
+                            [src.photos addObject:photoObject];
+                            [tagsArray addObject:src];
+                            [[INTagHistory shared] addDataSource:src];
+                            break;
+                        }
+                    }
                 }
             }
         }
@@ -357,11 +383,14 @@
             }
         }
         INSection *section = [[INSection alloc] initWithPhotos:photos];
-//        [self.sections insertObject:section atIndex:0];
-        [self.sections addObject:section];
-        [self.photos addObjectsFromArray:section.photos];
-        [self.tags addObjectsFromArray:section.tags];
-        completion(section);
+        [[INBlockDispatch shared] dispatchMain:^{
+            [self.sections addObject:section];
+            [self.photos addObjectsFromArray:section.photos];
+            [self.tags addObjectsFromArray:section.tags];
+            if (completion != NULL) {
+                completion(section);
+            }
+        }];
     }];
 }
 

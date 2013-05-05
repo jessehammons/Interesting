@@ -247,6 +247,8 @@
 			children = (
 				8851764D1734B84800D4FE0A /* INSingletonFactory.h */,
 				8851764E1734B84800D4FE0A /* INSingletonFactory.m */,
+				88D239E21732899800FE7060 /* INObject.h */,
+				88D239E31732899800FE7060 /* INObject.m */,
 				8851764A1734B66A00D4FE0A /* INPipeline.h */,
 				8851764B1734B66A00D4FE0A /* INPipeline.m */,
 				88ABCB52172990B5004772CF /* INDispatch.h */,
@@ -286,8 +288,6 @@
 				88B9C6CB17306C980082282A /* INFullscreenLoadingViewController.xib */,
 				88B9C6CE173074E60082282A /* INTheme.h */,
 				88B9C6CF173074E60082282A /* INTheme.m */,
-				88D239E21732899800FE7060 /* INObject.h */,
-				88D239E31732899800FE7060 /* INObject.m */,
 			);
 			path = Interesting;
 			sourceTree = "<group>";

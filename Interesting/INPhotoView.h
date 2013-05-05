@@ -29,15 +29,15 @@
 
 @interface INPhotoObjectView : UIView
 
-@property (nonatomic, strong) INDispatchRecord *dispatchRecordThumbnail;
-@property (nonatomic, strong) UIImage *thumbnail;
-@property (nonatomic, strong) INDispatchRecord *dispatchRecordImage;
-@property (nonatomic, strong) UIImage *image;
-@property (nonatomic, strong) UIImageView *imageView;
+@property (nonatomic, strong) NSArray *imageURLKeys;
+@property (nonatomic, strong) NSArray *pipelineObjects;
+@property (nonatomic, strong) UIImageView *visibleImageView;
+@property (nonatomic, strong) UIImageView *fadingImageView;
 
 @property (nonatomic, strong) INPhotoObject *photoObject;
 
-- (void)updatePhotoObject:(INPhotoObject*)photoObject;
+- (void)updatePhotoObject:(INPhotoObject*)photoObject loadImageURLKeys:(NSArray*)imageURLKeys;
+- (void)loadMediaWithPriority:(NSInteger)priority;
 
 @end
 

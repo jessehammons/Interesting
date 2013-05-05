@@ -190,7 +190,9 @@
 - (BOOL)hasDataForKey:(NSString*)key
 {
     NSString *destinationPath = [self filePathForKey:key];
-    return [[NSFileManager defaultManager] fileExistsAtPath:destinationPath];
+    BOOL result = [[NSFileManager defaultManager] fileExistsAtPath:destinationPath];
+//    NSLog(@"has data for key=%d,  %@, filename %@", result, [key lastPathComponent], [destinationPath lastPathComponent]);
+    return result;
 }
 
 @end

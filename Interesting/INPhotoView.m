@@ -6,11 +6,14 @@
 //  Copyright (c) 2013 Zaggle, Inc. All rights reserved.
 //
 
+#import <AVFoundation/AVFoundation.h>
+
 #import "INPhotoView.h"
 
 #import "INObject.h"
 #import "INDispatch.h"
 #import "INThumbnailCache.h"
+#import "INPipeline.h"
 
 @implementation INPhotoView
 
@@ -100,7 +103,7 @@
     if (url.length > 0) {
         url = [NSString stringWithFormat:@"http://www.zaggle.org/pdx/image/resize?width=2048&quality=50&image_url=%@", [url stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
 //        url = [NSString stringWithFormat:@"http://localhost:8089/pdx/image/resize?width=2048&quality=50&image_url=%@", [url stringByAddingPercentEscapesUsingEncoding:NSUTF8StringEncoding]];
-        NSLog(@"url is %@", url);
+//        NSLog(@"url is %@", url);
         NSURL *URL = [NSURL URLWithString:url];
         [[INThumbnailCache shared] cancelDispatch:self.imageRecord];
         self.imageRecord = [[INThumbnailCache shared] decodeImageURL:URL forSize:CGSizeMake(800, 600) priority:INDispatchPriorityDefault downloadIfNecessary:YES cacheData:YES completion:^(UIImage *image) {
@@ -181,54 +184,97 @@
     self = [super initWithFrame:frame];
     if (self) {
         self.autoresizesSubviews = NO;
-        self.backgroundColor = [UIColor colorWithPatternImage:[UIImage imageNamed:@"i_progress_bg_gray"]];
+//        self.backgroundColor = [UIColor colorWithPatternImage:[[UIImage imageNamed:@"i_progress_bg_gray"] resizableImageWithCapInsets:UIEdgeInsetsZero resizingMode:UIImageResizingModeStretch]];
+        self.backgroundColor = [UIColor clearColor];
         
-        self.imageView = [[UIImageView alloc] initWithFrame:self.bounds];
-        self.imageView.contentMode = UIViewContentModeScaleAspectFill;
-        self.imageView.clipsToBounds = YES;
-        [self addSubview:self.imageView];
+        self.visibleImageView = [[UIImageView alloc] initWithFrame:self.bounds];
+        self.visibleImageView.contentMode = UIViewContentModeScaleAspectFill;
+        self.visibleImageView.clipsToBounds = YES;
+        [self addSubview:self.visibleImageView];
+        
+        self.fadingImageView = [[UIImageView alloc] initWithFrame:self.bounds];
+        self.fadingImageView.contentMode = UIViewContentModeScaleAspectFill;
+        self.fadingImageView.clipsToBounds = YES;
+        [self addSubview:self.fadingImageView];
     }
     return self;
 }
 
-- (void)updatePhotoObject:(INPhotoObject*)photoObject
+
+- (void)loadMediaWithPriority:(NSInteger)priority
+{
+}
+
+
+- (void)updatePhotoObject:(INPhotoObject*)photoObject loadImageURLKeys:(NSArray*)imageURLKeys
 {
     self.photoObject = photoObject;
-    [[INThumbnailCache shared] cancelDispatch:self.dispatchRecordThumbnail];
-    [[INThumbnailCache shared] cancelDispatch:self.dispatchRecordImage];
-    self.thumbnail = nil;
-    self.image = nil;
-    self.imageView.image = nil;
+    self.imageURLKeys = imageURLKeys;
+    
+    for(INPipelineObject *pipelineObject in self.pipelineObjects) {
+        [pipelineObject cancelPipelineObject];
+    }
+    self.visibleImageView.alpha = 1;
+    self.visibleImageView.image = [UIImage imageNamed:@"i_progress_bg_gray"];
+    self.fadingImageView.alpha = 0;
+    self.fadingImageView.image = nil;
     __weak __typeof(&*self)weakSelf = self;
-    NSURL *thumbnailURL = [self.photoObject.dictionary URLForKey:@"url_t"];
-    self.dispatchRecordThumbnail = [[INThumbnailCache shared] decodeImageURL:thumbnailURL forSize:CGSizeMake(100,100) priority:INDispatchPriorityDefault downloadIfNecessary:YES cacheData:YES completion:^(UIImage *image) {
-        weakSelf.imageView.image = image;
-        weakSelf.dispatchRecordThumbnail = nil;
-    }];
+
+    NSMutableArray *pipelines = [NSMutableArray array];
+    for(NSString *key in self.imageURLKeys) {
+        NSURL *URL = [self.photoObject.dictionary URLForKey:key];
+        if (URL != nil) {
+            INPipelinePriority priority = INPipelinePriorityDefault;
+            if ([key isEqualToString:@"url_n"]) {
+                priority = INPipelinePriorityHigh;
+            }
+            INPipelineObject *pipelineObject = [INPipeline promoteDispatchForDataURL:URL priority:priority download:YES useCache:YES imageView:nil decodeBlock:^(INPipelineObject *pipelineObject) {
+                if (pipelineObject.isCancelled) {
+                    return;
+                }
+                UIImage *image = [UIImage imageWithData:pipelineObject.data scale:[UIScreen mainScreen].scale];
+                NSAssert(CGSizeEqualToSize(weakSelf.fadingImageView.frame.size, CGSizeZero) == NO, @"size must be non-zero");
+                CGSize size = weakSelf.fadingImageView.frame.size;
+                UIImage *newImage = image;
+                if (image.size.width > 200 || CGSizeEqualToSize(size, image.size) == NO) {
+                    CGRect newRect = AVMakeRectWithAspectRatioInsideRect(image.size, size.width > size.height ? CGRectMake(0, 0, 20000, size.height) : CGRectMake(0, 0, size.width, 20000));
+                    CGSize newSize = newRect.size;
+                    UIGraphicsBeginImageContextWithOptions(newSize, YES, 0.0);
+                    [image drawInRect:CGRectMake(0, 0, newSize.width, newSize.height)];
+                    newImage = UIGraphicsGetImageFromCurrentImageContext();
+                    UIGraphicsEndImageContext();
+                }
+                [[INBlockDispatch shared] dispatchMain:^{
+                    if (pipelineObject.isCancelled) {
+                        return;
+                    }
+                    weakSelf.fadingImageView.image = newImage;
+                    [UIView animateWithDuration:0.3 animations:^{
+                        weakSelf.fadingImageView.alpha = 1;
+                    }completion:^(BOOL finished) {
+                        if (finished) {
+                            weakSelf.visibleImageView.image = newImage;
+                            weakSelf.fadingImageView.alpha = 0;
+                        }
+                    }];
+                    NSInteger index = [weakSelf.pipelineObjects indexOfObject:pipelineObject];
+                    NSAssert(index != NSNotFound, @"should be found");
+                    for(NSInteger i = 0; i < index; i++) {
+//                        NSLog(@"%@ loaded %d, cancel %d", [weakSelf class], index, i);
+                        [[weakSelf.pipelineObjects objectAtIndex:i] cancelPipelineObject];
+                    }
+                }];
+            }];
+            [pipelines addObject:pipelineObject];
+        }
+    }
+    self.pipelineObjects = pipelines;
 }
 
 - (void)layoutSubviews
 {
-    self.imageView.frame = self.bounds;
-    if (self.image == nil && self.dispatchRecordImage == nil) {
-        CGFloat length = MAX(self.frame.size.width, self.frame.size.height);
-        if (length*[UIScreen mainScreen].scale > 100) {
-            NSString *urlKey = @"url_n";
-            if (length*[UIScreen mainScreen].scale > 640) {
-                urlKey = @"url_o";
-            }
-            else if (length*[UIScreen mainScreen].scale > 320) {
-                urlKey = @"url_z";
-            }
-            NSURL *URL = [self.photoObject.dictionary URLForKey:urlKey];
-            __weak __typeof(&*self)weakSelf = self;
-            self.dispatchRecordImage = [[INThumbnailCache shared] decodeImageURL:URL forSize:self.imageView.frame.size priority:INDispatchPriorityDefault downloadIfNecessary:YES cacheData:YES completion:^(UIImage *image) {
-                weakSelf.image = image;
-                weakSelf.imageView.image = image;
-                weakSelf.dispatchRecordImage = nil;
-            }];
-        }
-    }
+    self.visibleImageView.frame = self.bounds;
+    self.fadingImageView.frame = self.bounds;
 }
 
 @end
@@ -262,7 +308,7 @@
     [self.stackObject.tags sectionForSectionIndex:0 completion:^(INSection *section) {
         INPhotoObject *photoObject = [section.photos objectAtIndex:0];
         INPhotoObjectView *photoObjectView = [[INPhotoObjectView alloc] initWithFrame:CGRectZero];
-        [photoObjectView updatePhotoObject:photoObject];
+        [photoObjectView updatePhotoObject:photoObject loadImageURLKeys:@[@"url_t"]];
         [weakSelf.photoViews addObject:photoObjectView];
         [weakSelf addSubview:photoObjectView];
         [weakSelf setNeedsLayout];

@@ -20,3 +20,4 @@
 #define ZGAssert(x, y) NSAssert(x, y)
 #define ZG_ASSERT_IS_MAIN_THREAD() ZGAssert([NSThread isMainThread] == YES, @"main thread required")
 #define ZG_ASSERT_IS_BACKGROUND_THREAD() ZGAssert([NSThread isMainThread] == NO, @"background thread required")
+#define WEAKSELF() __weak __typeof(&*self)weakSelf = self;

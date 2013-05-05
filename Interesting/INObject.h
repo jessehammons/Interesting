@@ -32,6 +32,7 @@
 
 @property (nonatomic, strong) NSMutableArray *sourcesStack;
 @property (nonatomic, strong) NSMutableDictionary *viewedTags;
+@property (nonatomic, strong) NSMutableDictionary *viewedPhotos;
 
 + (INTagHistory*)shared;
 

@@ -91,9 +91,15 @@
     [self.currentPipeline cancelPipelineObject:self];
 }
 
+- (void)cancelPipelineObject
+{
+    [self _cancelPipelineObject];
+}
+
 - (void)removeImageView:(UIImageView*)imageView
 {
     ZG_ASSERT_IS_MAIN_THREAD();
+    imageView.backgroundColor = [UIColor blackColor];
     [self.imageViews removeObject:imageView];
     if (self.imageViews.count == 0) {
         [self _cancelPipelineObject];
@@ -119,7 +125,7 @@
     return self;
 }
 
-+ (INPipelineObject*)promoteDispatchForDataURL:(NSURL *)dataURL priority:(INPipelinePriority)priority download:(BOOL)download useCache:(BOOL)useCache imageView:(UIImageView*)imageView
++ (INPipelineObject*)promoteDispatchForDataURL:(NSURL *)dataURL priority:(INPipelinePriority)priority download:(BOOL)download useCache:(BOOL)useCache imageView:(UIImageView*)imageView decodeBlock:(void (^)(INPipelineObject *pipelineObject))decodeBlock
 {
     static NSInteger _promoteCount = 0;
     ZG_ASSERT_IS_MAIN_THREAD();
@@ -139,6 +145,7 @@
         result.dataURL = dataURL;
         result.downloadIfNecessary = download;
         result.useCache = useCache;
+        result.decodeBlock = decodeBlock;
     }
     else {
         NSAssert(result.currentPriority != INPipelinePriorityInvalid, @"this should be valid");
@@ -149,7 +156,7 @@
     result.datestamp = [NSDate date];
     result.promoteCount = _promoteCount++;
     if (result.currentPipeline == nil) {
-        if ([[INDiskCache shared] hasDataForKey:dataURL.absoluteString] && imageView != nil && result.useCache) {
+        if ([[INDiskCache shared] hasDataForKey:dataURL.absoluteString] && (imageView != nil || decodeBlock != NULL) && result.useCache) {
             [[INCPUPipeline shared] promotePiplineObject:result priority:priority];
         }
         else if (download) {
@@ -278,31 +285,31 @@
 - (void)dispatchPipelineObject:(INPipelineObject*)pipelineObject
 {
     ZG_ASSERT_IS_MAIN_THREAD();
+    WEAKSELF();
     if (pipelineObject.isCancelled) {
         [self dispatchOneIfNecessary];
         return;
     }
-    __weak __typeof(&*self)weakSelf = self;
     [[INBlockDispatch shared] dispatchBackground:^{
-        if (pipelineObject.isCancelled == NO) {
-            NSAssert(pipelineObject.currentPipeline == self, @"this should be us");
+        if (pipelineObject.data == nil && pipelineObject.useCache) {
+            pipelineObject.data = [[INDiskCache shared] dataForKey:pipelineObject.dataURL.absoluteString];
+            pipelineObject.isDataFromCache = YES;
+        }
+        if (pipelineObject.isCancelled == NO && pipelineObject.decodeBlock == NULL) {
+            NSAssert(weakSelf != nil && pipelineObject.currentPipeline == weakSelf, @"this should be us");
             NSAssert(pipelineObject.datestamp != nil, @"should not be nil");
             NSAssert(pipelineObject.dataURL != nil, @"we need this");
             NSAssert(pipelineObject.httpRequest == nil, @"this should be nil");
             NSAssert(pipelineObject.image == nil, @"this should be nil");
             NSAssert(pipelineObject.imageViews.count > 0, @"we should have observers");
 
-            if (pipelineObject.data == nil && pipelineObject.useCache) {
-                pipelineObject.data = [[INDiskCache shared] dataForKey:pipelineObject.dataURL.absoluteString];
-                pipelineObject.isDataFromCache = YES;
-            }
             UIImage *image = [UIImage imageWithData:pipelineObject.data scale:[UIScreen mainScreen].scale];
             // to avoid enumerating .imageViews while it is modified on another thread */
             [[INBlockDispatch shared] dispatchMain:^{
                 for(UIImageView *imageView in pipelineObject.imageViews) {
+                    imageView.backgroundColor = [UIColor lightGrayColor];
                     [[INBlockDispatch shared] dispatchBackground:^{
                         NSAssert(CGSizeEqualToSize(imageView.frame.size, CGSizeZero) == NO, @"size must be non-zero");
-                        imageView.backgroundColor = [UIColor lightGrayColor];
                         CGSize size = imageView.frame.size;
                         UIImage *newImage = image;
                         if (image.size.width > 200 || CGSizeEqualToSize(size, image.size) == NO) {
@@ -332,17 +339,30 @@
                                     imageView.backgroundColor = [UIColor purpleColor];
                                 }
                             }
+                            else {
+                                imageView.backgroundColor = [UIColor blueColor];
+                            }
+                            if (image == nil || newImage == nil) {
+                                NSLog(@"nil image %@, %@", imageView, pipelineObject.dataURL);
+                            }
                             [weakSelf.activeTargets removeObjectForKey:pipelineObject.dataURL];
-                            [self dispatchOneIfNecessary];
+                            [weakSelf dispatchOneIfNecessary];
                         }];
                     }];
                 }
             }];
         }
         else {
-            [[INBlockDispatch shared] dispatchMain:^{
-                [self dispatchOneIfNecessary];
-            }];
+            if (pipelineObject.isCancelled == NO) {
+                if (pipelineObject.decodeBlock != NULL) {
+                    pipelineObject.decodeBlock(pipelineObject);
+                    pipelineObject.decodeBlock = NULL;
+                }
+                [[INBlockDispatch shared] dispatchMain:^{
+                    [weakSelf.activeTargets removeObjectForKey:pipelineObject.dataURL];
+                    [weakSelf dispatchOneIfNecessary];
+                }];
+            }
         }
     }];
 }
@@ -389,6 +409,11 @@
             [[INCPUPipeline shared] promotePiplineObject:pipelineObject priority:currentPriority];
             [self.activeTargets removeObjectForKey:pipelineObject.dataURL];
         }
+        else {
+            for(UIImageView *imageView in pipelineObject.imageViews) {
+                imageView.backgroundColor = [UIColor redColor];
+            }
+        }
         [self dispatchOneIfNecessary];
     }];
     if (pipelineObject.useCache && pipelineObject.data.length > 0) {
@@ -405,9 +430,10 @@
             NSAssert(pipelineObject.datestamp != nil, @"should not be nil");
             NSAssert(pipelineObject.dataURL != nil, @"we need this");
             NSAssert(pipelineObject.httpRequest == nil, @"this should be nil");
+            NSAssert(pipelineObject.httpError == nil, @"this should be nil");
             NSAssert(pipelineObject.data == nil, @"this should be nil");
             NSAssert(pipelineObject.image == nil, @"this should be nil");
-            NSAssert(pipelineObject.imageViews.count > 0, @"we should have observers");
+            NSAssert(pipelineObject.imageViews.count > 0 || pipelineObject.decodeBlock != nil, @"we should have observers");
             __weak __typeof(&*self)weakSelf = self;
             //    NSLog(@"promote URL: %@", [URL lastPathComponent]);
             // NSURLCache is janky http://stackoverflow.com/questions/7166422/nsurlconnection-on-ios-doesnt-try-to-cache-objects-larger-than-50kb
@@ -423,6 +449,7 @@
            failure:^(AFHTTPRequestOperation *operation, NSError *error) {
                 ZG_ASSERT_IS_BACKGROUND_THREAD();
                NSAssert(pipelineObject.data == nil, @"this should be nil");
+               pipelineObject.httpError = error;
                 [weakSelf _finishDispatch:pipelineObject];
             }];
             pipelineObject.httpRequest = httpRequest;
@@ -434,6 +461,9 @@
         }
         else {
             [[INBlockDispatch shared] dispatchMain:^{
+                for(UIImageView *imageView in pipelineObject.imageViews) {
+                    imageView.backgroundColor = [UIColor greenColor];
+                }
                 [self dispatchOneIfNecessary];
             }];
         }

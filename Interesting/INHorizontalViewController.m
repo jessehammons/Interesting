@@ -10,9 +10,11 @@
 
 #import "INTheme.h"
 #import "INDispatch.h"
+#import "INObject.h"
 #import "INPhotoView.h"
 #import "INFlickrAPI.h"
 #import "INThumbnailCache.h"
+#import "INPipeline.h"
 
 @interface INHorizontalViewController ()
 
@@ -124,19 +126,19 @@
 
 - (NSUInteger)numberOfItemsInCarousel:(iCarousel *)carousel
 {
-    return self.photoGroup.photos.count;
+    return [self.dataSource photosCount];
 }
 
 - (UIView *)carousel:(iCarousel *)carousel viewForItemAtIndex:(NSUInteger)index reusingView:(UIView *)view
 {
-    INPhotoView *photoView = (id)view;
+    INPhotoObjectView *photoView = (id)view;
     if (photoView == nil) {
 //        CGFloat scale = 0.5;
 //        photoView = [[INPhotoView alloc] initWithFrame:CGRectMake(0, 0, scale*320, scale*240)];
-        photoView = [[INPhotoView alloc] initWithFrame:CGRectMake(0, 0, 640, 480)];
+        photoView = [[INPhotoObjectView alloc] initWithFrame:CGRectMake(0, 0, 640, 480)];
     }
-    NSDictionary *photo = [self.photoGroup photoAtIndex:index];
-    [photoView updatePhoto:photo];
+    INPhotoObject *photoObject = [self.dataSource photoAtIndex:index updateHighWatermark:YES];
+    [photoView updatePhotoObject:photoObject loadImageURLKeys:@[@"url_n", @"url_o"]];
 
     return photoView;
 }
@@ -147,9 +149,9 @@
 //- (NSUInteger)numberOfPlaceholdersInCarousel:(iCarousel *)carousel;
 //- (UIView *)carousel:(iCarousel *)carousel placeholderViewAtIndex:(NSUInteger)index reusingView:(UIView *)view;
 
-- (void)updatePhotoGroup:(INPhotoGroup*)value
+- (void)updateDataSource:(INDataSource*)dataSource
 {
-    self.photoGroup = value;
+    self.dataSource = dataSource;
     [self.carousel reloadData];
     self.carousel.transform = CGAffineTransformIdentity;
     self.carousel.center = CGPointMake(self.view.frame.size.width/2, 0);
@@ -163,6 +165,7 @@
             self.carousel.center = self.view.center;
         } completion:^(BOOL finished){
         }];
+        [self performSelector:@selector(loadNextSectionIfNecessary) withObject:nil afterDelay:0];
     });
 
 //    [self _zoomUp];
@@ -206,14 +209,14 @@
 - (void)carouselCurrentItemIndexDidChange:(iCarousel *)carousel
 {
 //    if (CGAffineTransformIsIdentity(self.carousel.transform) == NO) {
-        INPhotoView *photoView = (id)[carousel itemViewAtIndex:carousel.currentItemIndex];
-        [photoView loadPhotoURLKey:@"url_o"];
+        INPhotoObjectView *photoView = (id)[carousel itemViewAtIndex:carousel.currentItemIndex];
+        [photoView loadMediaWithPriority:INPipelinePriorityHigh];
 //    }
 }
 
 - (void)carouselDidEndDecelerating:(iCarousel *)carousel
 {
-    [self _zoomUp];
+//    [self _zoomUp];
 }
 
 - (BOOL)carousel:(iCarousel *)carousel shouldSelectItemAtIndex:(NSInteger)index
@@ -272,17 +275,36 @@
 
 - (void)loadTag:(NSString*)tag completion:(void (^)(void))completion;
 {
+//
+//    self.navigationItem.title = tag;
+//    [[INFlickrAPI shared] interestingPhotosForTags:@[tag] section:0 filterPredicate:nil completion:^(NSArray *photos, NSError *error) {
+//        [[INBlockDispatch shared] dispatchMain:^{
+//            INPhotoGroup *group = [INPhotoGroup photoGroupWithPhotosArray:photos];
+//            [self updatePhotoGroup:group];
+//            if (completion != NULL) {
+//                completion();
+//            }
+//        }];
+//    }];
+}
 
-    self.navigationItem.title = tag;
-    [[INFlickrAPI shared] interestingPhotosForTags:@[tag] section:0 filterPredicate:nil completion:^(NSArray *photos, NSError *error) {
-        [[INBlockDispatch shared] dispatchMain:^{
-            INPhotoGroup *group = [INPhotoGroup photoGroupWithPhotosArray:photos];
-            [self updatePhotoGroup:group];
-            if (completion != NULL) {
-                completion();
-            }
+- (void)loadNextSectionIfNecessary
+{
+    WEAKSELF();
+    if (self.isLoading == NO && [self.dataSource needsMoreTags]) {
+        self.isLoading = YES;
+        NSLog(@"HORIZ sections=%d, tags=%d, highwater=%d", self.dataSource.sections.count, self.dataSource.tags.count, self.dataSource.tagsHighWaterMark);
+        [self.dataSource sectionForSectionIndex:self.dataSource.sections.count completion:^(INSection *section) {
+            ZG_ASSERT_IS_MAIN_THREAD();
+            [weakSelf.carousel reloadData];
+            weakSelf.isLoading = NO;
+            [weakSelf performSelector:@selector(loadNextSectionIfNecessary) withObject:nil afterDelay:0.1];
+//            [weakSelf preloadSection:section];
+//            for(INTagCell *cell in [self.collectionView visibleCells]) {
+//                [cell.loadingIndicatorView stopAnimating];
+//            }
         }];
-    }];
+    }
 }
 
 @end

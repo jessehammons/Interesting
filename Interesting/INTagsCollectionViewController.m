@@ -50,6 +50,8 @@
 //        }];
 //    }];
     self.collectionView.tagsDataSource = [[INFlickrDataSource alloc] initWithSourceTags:@[@"interesting"]];
+    [self.collectionView.collectionView reloadData];
+//    [self.collectionView performSelector:@selector(loadNextSectionIfNecessary) withObject:nil afterDelay:0];
     [self.collectionView loadNextSectionIfNecessary];
 //    [self.collectionView loadNextSectionIfNecessary];
 
@@ -126,10 +128,11 @@
 {
     INDataSource *dataSource = [self.collectionView.tagsDataSource tagAtIndex:indexPath.item updateHighWatermark:NO];
     INHorizontalViewController *controller = [[INHorizontalViewController alloc] initWithNibName:@"INHorizontalViewController" bundle:nil];
-    [[INFullscreenLoadingViewController shared] presentLoadingFullscreen:self completion:NULL];
-    [controller loadTag:[dataSource.sourceTags objectAtIndex:0] completion:^{
-        [[INFullscreenLoadingViewController shared] dismissLoadingFullscreen:NULL];
-    }];
+//    [[INFullscreenLoadingViewController shared] presentLoadingFullscreen:self completion:NULL];
+//    [controller loadTag:[dataSource.sourceTags objectAtIndex:0] completion:^{
+//        [[INFullscreenLoadingViewController shared] dismissLoadingFullscreen:NULL];
+//    }];
+    [controller updateDataSource:dataSource];
     [self.navigationController pushViewController:controller animated:YES];
 }
 

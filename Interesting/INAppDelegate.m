@@ -23,9 +23,9 @@
     NSLog(@"initialized tag history %@", [INTagHistory shared]);
     self.window = [[UIWindow alloc] initWithFrame:[[UIScreen mainScreen] bounds]];
     self.viewController = [[INViewController alloc] initWithNibName:@"INViewController" bundle:nil];
-//    INTagsCollectionViewController *controller = [[INTagsCollectionViewController alloc] initWithNibName:@"INTagsCollectionViewController" bundle:nil];
+    INTagsCollectionViewController *controller = [[INTagsCollectionViewController alloc] initWithNibName:@"INTagsCollectionViewController" bundle:nil];
 //    INTestTableViewController *controller = [[INTestTableViewController alloc] initWithStyle:UITableViewStylePlain];
-    INTestDispatchViewController *controller = [[INTestDispatchViewController alloc] initWithStyle:UITableViewStylePlain];
+//    INTestDispatchViewController *controller = [[INTestDispatchViewController alloc] initWithStyle:UITableViewStylePlain];
     
     
 //    self.navigationController = [[UINavigationController alloc] initWithRootViewController:self.viewController];

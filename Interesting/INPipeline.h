@@ -41,6 +41,7 @@ typedef NS_ENUM(NSInteger, INPipelinePriority) {
 @property (nonatomic, strong) NSURL *dataURL;  // dataURL -> data
 @property (nonatomic, strong) NSDate *downloadBeginDate;
 @property (nonatomic, strong) AFHTTPRequestOperation *httpRequest;
+@property (nonatomic, strong) NSError *httpError;
 @property (nonatomic, strong) NSDate *downloadEndDate;
 @property (nonatomic, strong) NSData *data;  // data -> UIImage (scaled) (write to disk)
 @property (nonatomic, assign) BOOL isDataFromCache;
@@ -50,8 +51,10 @@ typedef NS_ENUM(NSInteger, INPipelinePriority) {
 @property (nonatomic, assign) BOOL isCancelled;
 @property (nonatomic, assign) BOOL downloadIfNecessary;
 @property (nonatomic, assign) BOOL useCache;
+@property (nonatomic, copy) void (^decodeBlock)(INPipelineObject *pipelineObject);
 
-//- (void)cancelPipelineObject;
+
+- (void)cancelPipelineObject;
 - (void)removeImageView:(UIImageView*)imageView;
 
 @end
@@ -62,7 +65,7 @@ typedef NS_ENUM(NSInteger, INPipelinePriority) {
 @property (nonatomic, strong) NSMutableDictionary *activeTargets;
 @property (nonatomic, assign) NSInteger maxActiveTargets;
 
-+ (INPipelineObject*)promoteDispatchForDataURL:(NSURL *)dataURL priority:(INPipelinePriority)priority download:(BOOL)download useCache:(BOOL)useCache imageView:(UIImageView*)imageView;
++ (INPipelineObject*)promoteDispatchForDataURL:(NSURL *)dataURL priority:(INPipelinePriority)priority download:(BOOL)download useCache:(BOOL)useCache imageView:(UIImageView*)imageView decodeBlock:(void (^)(INPipelineObject *pipelineObject))decodeBlock;
 
 - (INPipelineObject*)pipelineObjectForDataURL:(NSURL*)dataURL;
 - (void)promotePiplineObject:(INPipelineObject*)pipelineObject priority:(INPipelinePriority)priority;
